@@ -1,0 +1,356 @@
+<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Tài Xỉu</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Game Tài Xỉu</h1>
+        <div class="dice">
+            <div id="dice1" class="dice-face">0</div>
+            <div id="dice2" class="dice-face">0</div>
+            <div id="dice3" class="dice-face">0</div>
+        </div>
+        <div class="betting-buttons">
+            <button class="money-button" data-bet="1000000">1M</button>
+            <button class="money-button" data-bet="2000000">2M</button>
+            <button class="money-button" data-bet="5000000">5M</button>
+            <button class="money-button" data-bet="10000000">10M</button>
+            <button class="money-button" data-bet="20000000">20M</button>
+            <button class="money-button" data-bet="50000000">50M</button>
+        </div>
+        <div class="betting-options">
+            <div class="bet-option" data-target="betTài">
+                <label for="betTài">Tài (≥ 11):</label>
+                <span id="betTài" data-value="0">0</span>
+            </div>
+            <div class="bet-option" data-target="betXỉu">
+                <label for="betXỉu">Xỉu (≤ 10):</label>
+                <span id="betXỉu" data-value="0">0</span>
+            </div>
+        </div>
+        <div id="points-options" class="betting-options">
+            <!-- JavaScript sẽ tạo các ô từ 3 đến 18 điểm -->
+        </div>
+        <button id="rollButton">Quay Xúc Xắc</button>
+        <p id="result"></p>
+        <p id="details"></p>
+        <p id="score">Điểm: 0</p>
+        <p id="balance">Số dư: 1,000M</p>
+        <button id="historyButton">Lịch Sử</button>
+        <div id="history" style="display:none;">
+            <h2>Lịch sử các vòng</h2>
+            <ul id="historyList"></ul>
+        </div>
+        <button id="resetButton">Reset</button>
+    </div>
+    <script src="scripts.js"></script>
+</body>
+</html><style>body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #f0f0f0;
+    margin: 0;
+}
+
+.container {
+    text-align: center;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    width: 90vw; /* Chỉnh lại để phù hợp với màn hình 16:9 */
+    max-width: 1600px;
+}
+
+.dice {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.dice-face {
+    width: 100px;
+    height: 100px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 36px;
+    margin: 0 10px;
+    border: 2px solid #000;
+    border-radius: 10px;
+    background-color: #e6e6e6;
+}
+
+.betting-options {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.bet-option {
+    border: 2px solid #007bff;
+    border-radius: 5px;
+    padding: 10px;
+    margin: 10px;
+    text-align: center;
+    min-width: 80px;
+    cursor: pointer;
+}
+
+.bet-option.selected {
+    background-color: #00ff00; /* Xanh lá cây */
+    border-color: #0056b3;
+}
+
+.betting-buttons {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+}
+
+.money-button {
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    background-color: #007bff;
+    color: #fff;
+    cursor: pointer;
+    margin: 0 5px;
+}
+
+.money-button.selected {
+    background-color: #0056b3;
+}
+
+.money-button:hover {
+    background-color: #0056b3;
+}
+
+button {
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    background-color: #007bff;
+    color: #fff;
+    cursor: pointer;
+    margin: 5px 5px;
+}
+
+button:hover {
+    background-color: #0056b3;
+}</style><script>document.getElementById("rollButton").addEventListener("click", quayXucXac);
+document.querySelectorAll('.money-button').forEach(button => button.addEventListener('click', chonTienCuoc));
+document.querySelectorAll('.bet-option').forEach(option => option.addEventListener('click', datCuoc));
+document.getElementById("historyButton").addEventListener("click", toggleHistory);
+document.getElementById("resetButton").addEventListener("click", resetGame);
+
+let soDu = 1000000000; // Số tiền ban đầu là 1 tỷ
+let selectedBetAmount = null;
+let history = [];
+
+function chonTienCuoc(event) {
+    selectedBetAmount = parseInt(event.target.getAttribute('data-bet'));
+    document.querySelectorAll('.money-button').forEach(button => button.classList.remove('selected'));
+    event.target.classList.add('selected');
+}
+
+function datCuoc(event) {
+    // Xóa kết quả vòng trước nếu có đặt cược mới
+    document.getElementById("result").textContent = '';
+    document.getElementById("details").innerHTML = '';
+
+    if (soDu <= 0) {
+        alert("Số dư của bạn không đủ để đặt cược.");
+        return;
+    }
+
+    if (selectedBetAmount !== null) {
+        const target = event.currentTarget;
+        const span = target.querySelector('span');
+        const currentBet = parseInt(span.getAttribute('data-value') || 0);
+        const newBet = currentBet + selectedBetAmount;
+
+        if (newBet > soDu) {
+            alert("Số tiền đặt cược lớn hơn số dư hiện có.");
+            return;
+        }
+
+        span.textContent = formatCurrency(newBet);
+        span.setAttribute('data-value', newBet);
+        soDu -= selectedBetAmount;
+        updateBalance();
+    }
+
+    document.querySelectorAll('.bet-option').forEach(option => option.classList.remove('selected'));
+    event.currentTarget.classList.add('selected');
+}
+
+const pointsOptions = document.getElementById("points-options");
+for (let i = 3; i <= 18; i++) {
+    const div = document.createElement("div");
+    div.classList.add("bet-option");
+    div.setAttribute("data-target", `bet${i}`);
+    div.innerHTML = `
+        <label for="bet${i}">${i}:</label>
+        <span id="bet${i}" data-value="0">0</span>
+    `;
+    pointsOptions.appendChild(div);
+    div.addEventListener('click', datCuoc);
+}
+
+function quayXucXac() {
+    const dice1 = document.getElementById("dice1");
+    const dice2 = document.getElementById("dice2");
+    const dice3 = document.getElementById("dice3");
+    const ketQua = document.getElementById("result");
+    const details = document.getElementById("details");
+    const diem = document.getElementById("score");
+    const soDuElem = document.getElementById("balance");
+
+    const bets = Array.from(document.querySelectorAll('span[id^="bet"]')).map(span => ({
+        point: span.id.replace('bet', ''),
+        value: parseInt(span.getAttribute('data-value') || 0)
+    }));
+
+    // Phần animation quay số như game jackpot
+    const duration = [7000, 9000, 11000]; // Thời gian cho từng ô xúc xắc
+    const so1 = Math.floor(Math.random() * 6) + 1;
+    const so2 = Math.floor(Math.random() * 6) + 1;
+    const so3 = Math.floor(Math.random() * 6) + 1;
+
+    animateDice(dice1, duration[0], so1);
+    animateDice(dice2, duration[1], so2);
+    animateDice(dice3, duration[2], so3);
+
+    setTimeout(() => {
+        const tongDiem = so1 + so2 + so3;
+
+        dice1.textContent = so1;
+        dice2.textContent = so2;
+        dice3.textContent = so3;
+
+        // Lưu kết quả vào lịch sử
+        history.push(tongDiem);
+        if (history.length > 5) {
+            history.shift(); // Chỉ giữ lại 5 vòng mới nhất
+        }
+        updateHistory();
+
+        let tienThang = 0;
+        let chiTietThang = '';
+        let chiTietThua = '';
+        let tongThang = 0;
+        let tongThua = 0;
+
+        bets.forEach(bet => {
+            if (bet.value > 0 && (
+                (bet.point === "Tài" && tongDiem >= 11) || 
+                (bet.point === "Xỉu" && tongDiem <= 10) ||
+                (bet.point == tongDiem)
+            )) {
+                if (bet.point == tongDiem) {
+                    tienThang += bet.value * tongDiem; // Tỷ lệ thắng khi cược đúng số điểm
+                    chiTietThang += `Thắng ở ô ${bet.point}: ${formatCurrency(bet.value * tongDiem)}<br>`;
+                    soDu += bet.value * tongDiem; // Tiền thắng cộng tiền cược
+                    tongThang += bet.value * tongDiem;
+                } else {
+                    tienThang += bet.value; // Cược tài xỉu thắng bằng tiền cược
+                    chiTietThang += `Thắng ở ô ${bet.point}: ${formatCurrency(bet.value)}<br>`;
+                    soDu += bet.value * 2;
+                    tongThang += bet.value;
+                }
+            } else if (bet.value > 0) {
+                chiTietThua += `Thua ở ô ${bet.point}: ${formatCurrency(bet.value)}<br>`;
+                tongThua += bet.value;
+            }
+        });
+
+        const tongKet = tongThang - tongThua;
+
+        setTimeout(() => {
+            if (tongKet >= 0) {
+                ketQua.textContent = `Bạn Thắng! Tổng số tiền thắng: ${formatCurrency(tongKet)}`;
+            } else {
+                ketQua.textContent = `Bạn Thua! Tổng số tiền thua: ${formatCurrency(-tongKet)}`;
+            }
+
+            details.innerHTML = `Chi tiết:<br>${chiTietThang}${chiTietThua}Tổng: ${tongKet >= 0 ? 'Thắng' : 'Thua'} ${formatCurrency(Math.abs(tongKet))}`;
+
+            soDuElem.textContent = `Số dư: ${formatCurrency(soDu)}`;
+            diem.textContent = `Điểm: ${tongDiem}`;
+
+            // Reset tiền cược
+            document.querySelectorAll('span[id^="bet"]').forEach(span => {
+                span.textContent = "0";
+                span.setAttribute('data-value', "0");
+            });
+            selectedBetAmount = null;
+            document.querySelectorAll('.bet-option').forEach(option => option.classList.remove('selected'));
+            document.querySelectorAll('.money-button').forEach(button => button.classList.remove('selected'));
+
+            setTimeout(() => {
+                ketQua.textContent = "";
+                details.innerHTML = "";
+            }, 20000);
+        }, 2000); // Hiện kết quả sau 2 giây
+    }, duration[2]);
+}
+
+function animateDice(dice, duration, finalValue) {
+    const start = Date.now();
+    const interval = setInterval(() => {
+        const elapsed = Date.now() - start;
+        if (elapsed >= duration) {
+            clearInterval(interval);
+            dice.textContent = finalValue;
+            return;
+        }
+        dice.textContent = Math.floor(Math.random() * 6) + 1;
+    }, 50); // Tốc độ ban đầu nhanh, sẽ chậm dần
+}
+
+function formatCurrency(value) {
+    return (value / 1000000).toFixed(0) + 'M';
+}
+
+function updateHistory() {
+    const historyList = document.getElementById("historyList");
+    historyList.innerHTML = history.map(round => `<li>Điểm: ${round}</li>`).join('');
+}
+
+function toggleHistory() {
+    const historyDiv = document.getElementById("history");
+    historyDiv.style.display = historyDiv.style.display === "none" ? "block" : "none";
+}
+
+function updateBalance() {
+    document.getElementById("balance").textContent = `Số dư: ${formatCurrency(soDu)}`;
+}
+
+function resetGame() {
+    soDu = 1000000000; // Số tiền ban đầu là 1 tỷ
+    selectedBetAmount = null;
+    history = [];
+    updateBalance();
+    document.getElementById("result").textContent = '';
+    document.getElementById("details").innerHTML = '';
+    document.getElementById("score").textContent = 'Điểm: 0';
+    document.getElementById("historyList").innerHTML = '';
+    document.querySelectorAll('span[id^="bet"]').forEach(span => {
+        span.textContent = "0";
+        span.setAttribute('data-value', "0");
+    });
+    document.querySelectorAll('.bet-option').forEach(option => option.classList.remove('selected'));
+ // Viết tiếp phần "resetGame" function từ đoạn trước
+    document.querySelectorAll('.money-button').forEach(button => button.classList.remove('selected'));
+}</script>
